@@ -1,0 +1,218 @@
+//
+//  NewDotViewController.swift
+//  Dropr
+//
+//  Created by Josh Peters on 4/11/17.
+//  Copyright © 2017 GarrettPeters. All rights reserved.
+//
+
+// Citing code from: http://stackoverflow.com/questions/25296691/get-users-current-location-coordinates
+// for dropping pin at user location
+
+import UIKit
+import MobileCoreServices
+import CoreLocation
+
+class NewDotViewController: UIViewController, UIImagePickerControllerDelegate,
+                            UINavigationControllerDelegate, CLLocationManagerDelegate {
+    
+    @IBOutlet weak var descriptionTextField: UITextField!
+    @IBOutlet weak var titleTextField: UITextField!
+    @IBOutlet weak var switchy: UISwitch!
+    @IBOutlet weak var dotColor: UILabel!
+    @IBOutlet weak var imageView: UIImageView!
+    var newMedia: Bool?
+    var dot:Dot?
+    
+    //take photo button
+    @IBAction func takePhoto(_ sender: AnyObject) {
+
+        if UIImagePickerController.isSourceTypeAvailable(
+            UIImagePickerControllerSourceType.camera) {
+            
+            let imagePicker = UIImagePickerController()
+            
+            imagePicker.delegate = self
+            imagePicker.sourceType =
+                UIImagePickerControllerSourceType.camera
+            imagePicker.mediaTypes = [kUTTypeImage as String]
+            imagePicker.allowsEditing = false
+            
+            self.present(imagePicker, animated: true,
+                         completion: nil)
+            newMedia = true
+        }
+    }
+    
+    //use image library button
+    @IBAction func useImageLibrary(_ sender: AnyObject) {
+        if UIImagePickerController.isSourceTypeAvailable(
+            UIImagePickerControllerSourceType.savedPhotosAlbum) {
+            let imagePicker = UIImagePickerController()
+            
+            imagePicker.delegate = self
+            imagePicker.sourceType =
+                UIImagePickerControllerSourceType.photoLibrary
+            imagePicker.mediaTypes = [kUTTypeImage as String]
+            imagePicker.allowsEditing = false
+            self.present(imagePicker, animated: true,
+                         completion: nil)
+            newMedia = false
+        }
+    }
+    
+    //image picker
+    func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [String : Any]) {
+        
+        let mediaType = info[UIImagePickerControllerMediaType] as! NSString
+        
+        self.dismiss(animated: true, completion: nil)
+        
+        if mediaType.isEqual(to: kUTTypeImage as String) {
+            let image = info[UIImagePickerControllerOriginalImage]
+                as! UIImage
+            
+            imageView.image = image
+            
+            if (newMedia == true) {
+                UIImageWriteToSavedPhotosAlbum(image, self,
+                                               #selector(NewDotViewController.image(image:didFinishSavingWithError:contextInfo:)), nil)
+            } else if mediaType.isEqual(to: kUTTypeMovie as String) {
+                // Code to support video here
+            }
+            
+        }
+    }
+    
+    //cancel on image picker
+    func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+        self.dismiss(animated: true, completion: nil)
+    }
+    
+    func image(image: UIImage, didFinishSavingWithError error: NSErrorPointer, contextInfo:UnsafeRawPointer) {
+        
+        if error != nil {
+            let alert = UIAlertController(title: "Save Failed",
+                                          message: "Failed to save image",
+                                          preferredStyle: UIAlertControllerStyle.alert)
+            
+            let cancelAction = UIAlertAction(title: "OK",
+                                             style: .cancel, handler: nil)
+            
+            alert.addAction(cancelAction)
+            self.present(alert, animated: true,
+                         completion: nil)
+        }
+    }
+    
+    //cancel on creating new dot
+    @IBAction func cancel(_ sender: UIBarButtonItem) {
+        self.dismiss(animated: true, completion: nil)
+    }
+    
+    func dismissKeyboard() {
+        //Causes the view (or one of its embedded text fields) to resign the first responder status.
+        view.endEditing(true)
+    }
+    
+    // Get user location
+    let locationManager = CLLocationManager()
+    var locValue:CLLocationCoordinate2D = CLLocationCoordinate2D(latitude: 0.0, longitude: 0.0)
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        locValue = manager.location!.coordinate
+    }
+    
+    @IBAction func addDot(_ sender: Any) {
+        // check for empty fields: http://stackoverflow.com/questions/29633938/swift-displaying-alerts-best-practices
+        if titleTextField.text == "" {
+            let alertController = UIAlertController(title: "No title!", message: "Please add a title.", preferredStyle: .alert)
+            let OKAction = UIAlertAction(title: "OK", style: .default, handler: nil)
+            alertController.addAction(OKAction)
+            self.present(alertController, animated: true, completion: nil)
+        }
+        else if descriptionTextField.text == "" {
+            let alertController = UIAlertController(title: "No description!", message: "Please add a description.", preferredStyle: .alert)
+            let OKAction = UIAlertAction(title: "OK", style: .default, handler: nil)
+            alertController.addAction(OKAction)
+            self.present(alertController, animated: true, completion: nil)
+        }
+        else if (titleTextField.text?.characters.count)! > 40{
+            let alertController = UIAlertController(title: "Title too long", message: "Please shorten the title to 40 characters or less.", preferredStyle: .alert)
+            let OKAction = UIAlertAction(title: "OK", style: .default, handler: nil)
+            alertController.addAction(OKAction)
+            self.present(alertController, animated: true, completion: nil)
+        }
+        else if (descriptionTextField.text?.characters.count)! > 140 {
+            let alertController = UIAlertController(title: "Description too long", message: "Please shorten the description to 140 characters or less.", preferredStyle: .alert)
+            let OKAction = UIAlertAction(title: "OK", style: .default, handler: nil)
+            alertController.addAction(OKAction)
+            self.present(alertController, animated: true, completion: nil)
+        } else {
+            self.performSegue(withIdentifier: "AddDot", sender: self)
+        }
+    }
+    
+
+    
+    // Segue for dropping that dot
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+        super.prepare(for: segue, sender: sender)
+        if segue.identifier == "AddDot"{
+            // check for empty fields: http://stackoverflow.com/questions/29633938/swift-displaying-alerts-best-practices
+            if titleTextField.text == "" {
+                let alertController = UIAlertController(title: "Error", message: "Please add a title", preferredStyle: .alert)
+                let OKAction = UIAlertAction(title: "OK", style: .default, handler: nil)
+                alertController.addAction(OKAction)
+                self.present(alertController, animated: true, completion: nil)
+            }
+            
+            //need to change imagePath, add green indicator, and add user location
+            dot = Dot(title: titleTextField.text!, desc: descriptionTextField.text!, upVoteCount: 0, imagePath: "test", green: switchy.isOn, coordinate: locValue, deviceID: deviceID)
+            print("deviceID in newdotViewcontroller segue ", deviceID)
+            print("deviceID in dot in newdotViewcontroller segue ", dot!.deviceID)
+            
+<<<<<<< HEAD
+=======
+            print("description in NewDotViewController")
+            print(dot!.desc)
+            print("description in textfield")
+            print(descriptionTextField.text!)
+            
+>>>>>>> 5a59cf368251f2ab805d80634c2b9386d054ef9b
+        }
+        
+    }
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        
+        
+        
+        
+        // Change background of switch: http://stackoverflow.com/questions/10348869/change-color-of-uiswitch-in-off-state/22830039#22830039
+        switchy.backgroundColor = UIColor.red
+        switchy.layer.cornerRadius = 16.0
+        
+        let tap: UITapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(NewDotViewController.dismissKeyboard))
+        view.addGestureRecognizer(tap)
+        
+        // Ask for Authorisation from the User.
+        self.locationManager.requestAlwaysAuthorization()
+        
+        // For use in foreground
+        self.locationManager.requestWhenInUseAuthorization()
+        
+        if CLLocationManager.locationServicesEnabled() {
+            locationManager.delegate = self
+            locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
+            locationManager.startUpdatingLocation()
+        }
+    }
+    
+    override func didReceiveMemoryWarning() {
+        super.didReceiveMemoryWarning()
+    }
+    
+    
+    
+}
